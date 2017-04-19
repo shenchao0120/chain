@@ -161,6 +161,8 @@ func main() {
 	mux.Handle("/raft/", raftDB)
 
 	var handler http.Handler = mux
+	handler = a.authzHandler(handler)
+	handler = a.authnHandler(handler)
 	handler = reqid.Handler(handler)
 
 	secureheader.DefaultConfig.PermitClearLoopback = true
