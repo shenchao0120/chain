@@ -38,11 +38,7 @@ public class AccessToken {
     /**
      * Requests a page of access tokens based on an underlying query.
      * @return a page of access tokens
-     * @throws APIException This exception is raised if the api returns errors while retrieving the accounts.
-     * @throws BadURLException This exception wraps java.net.MalformedURLException.
-     * @throws ConnectivityException This exception is raised if there are connectivity issues with the server.
-     * @throws HTTPException This exception is raised when errors occur making http requests.
-     * @throws JSONException This exception is raised due to malformed json requests or responses.
+     * @throws ChainException
      */
     public Items getPage() throws ChainException {
       Items items = this.client.request("list-access-tokens", this.next, Items.class);
@@ -60,11 +56,7 @@ public class AccessToken {
      * Retrieves query results from Chain Core.
      * @param client the client object providing connectivity to the Chain Core instance
      * @return a collection of access tokens
-     * @throws APIException This exception is raised if the api returns errors while retrieving the accounts.
-     * @throws BadURLException This exception wraps java.net.MalformedURLException.
-     * @throws ConnectivityException This exception is raised if there are connectivity issues with the server.
-     * @throws HTTPException This exception is raised when errors occur making http requests.
-     * @throws JSONException This exception is raised due to malformed json requests or responses.
+     * @throws ChainException
      */
     public Items execute(Client client) throws ChainException {
       Items items = new Items();
@@ -93,11 +85,7 @@ public class AccessToken {
      * Creates a new access token.
      * @param client the client object providing connectivity to the Chain Core instance
      * @return an access token object
-     * @throws APIException This exception is raised if a valid error response is returned from the server.
-     * @throws BadURLException This exception wraps java.net.MalformedURLException.
-     * @throws ConnectivityException This exception is raised if there are connectivity issues with the server.
-     * @throws HTTPException This exception is raised when errors occur making http requests.
-     * @throws JSONException This exception is raised due to malformed json requests or responses.
+     * @throws ChainException
      */
     public AccessToken create(Client client) throws ChainException {
       clientToken = UUID.randomUUID().toString();
