@@ -9,13 +9,12 @@ import com.google.gson.annotations.SerializedName;
 
 /**
  * An authorization grant provides provides granular access to resources exposed
- * by the Chain Core API. It does so by mapping guards (predicates that provide
- * a positive or negative match against specific credentials) to policies (lists
- * of resources).
+ * by the Chain Core API. It maps guards (predicates that match against credentials
+ * provided by clients) to policies (lists of resources).
  * <p>
- * Currently, there are two types of guards: {@link AccessTokenGuard}, which
- * matches against specific access tokens by ID, and {@link X509Guard}, which
- * matches against X.509 client certificates that match a set of fields.
+ * There are two types of guards: {@link AccessTokenGuard}, which matches against
+ * access tokens by ID, and {@link X509Guard}, which matches against X.509 client
+ * certificates that match a set of fields.
  * <p>
  * Currently, there are four policies exposed through the API:
  * <p><ul>
@@ -63,8 +62,8 @@ public class AuthorizationGrant {
    * A guard that will provide access for X.509 certificates that match a
    * particular set of fields. If a certificate contains all of the fields
    * specified in the guard, the guard will produce a positive match.
-   * Matching certificates may contain more fields than are specified in
-   * the guard.
+   * In other words, the certificate's field must be a superset of the
+   * fields in the guard.
    */
   public static class X509Guard {
     public Map<String, Object> fields;
@@ -138,7 +137,7 @@ public class AuthorizationGrant {
 
     /**
      * Specifies a guard that will match against a specific access token.
-     * @param g an {@link AccessTokenGuard}
+     * @param g a guard that matches against an access token
      * @return updated builder object
      */
     public T setGuard(AccessTokenGuard g) {
@@ -149,8 +148,8 @@ public class AuthorizationGrant {
     }
 
     /**
-     * Specifies a guard that will match against a family of X.509 certificates.
-     * @param g an {@link X509Guard}
+     * Specifies a guard that will match against X.509 certificates.
+     * @param g a guard that matches against X.509 certificates
      * @return updated builder object
      */
     public T setGuard(X509Guard g) {

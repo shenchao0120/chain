@@ -10,9 +10,8 @@ import java.util.*;
  * Access tokens are used to authenticate requests made to an instance of
  * Chain Core.
  * <p>
- * Access tokens have no access to API resources immediately after creation.
- * Before an access token is usable, make sure to use an
- * {@link AuthorizationGrant} to assign access policies to the token.
+ * After creating an access token, you should use an {@link AuthorizationGrant}
+ * to assign access policies to the token.
  */
 public class AccessToken {
   /**
@@ -27,7 +26,7 @@ public class AccessToken {
   public String token;
 
   /**
-   * Timestamp reflecting when the access token was created.
+   * The time at which the access token was created.
    */
   @SerializedName("created_at")
   public Date createdAt;
@@ -59,7 +58,7 @@ public class AccessToken {
   public static class QueryBuilder extends BaseQueryBuilder<QueryBuilder> {
     /**
      * Retrieves query results from Chain Core.
-     * @param client client object that makes requests to the core
+     * @param client the client object providing connectivity to the Chain Core instance
      * @return a collection of access tokens
      * @throws APIException This exception is raised if the api returns errors while retrieving the accounts.
      * @throws BadURLException This exception wraps java.net.MalformedURLException.
@@ -92,7 +91,7 @@ public class AccessToken {
 
     /**
      * Creates a new access token.
-     * @param client client object that makes request to the core
+     * @param client the client object providing connectivity to the Chain Core instance
      * @return an access token object
      * @throws APIException This exception is raised if a valid error response is returned from the server.
      * @throws BadURLException This exception wraps java.net.MalformedURLException.
