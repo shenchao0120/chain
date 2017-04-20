@@ -14,7 +14,7 @@ import com.google.gson.annotations.SerializedName;
  * <p>
  * There are two types of guards: {@link AccessTokenGuard}, which matches against
  * access tokens by ID, and {@link X509Guard}, which matches against X.509 client
- * certificates that match a set of fields.
+ * certificates with a particular Subject field.
  * <p>
  * Currently, there are four policies exposed through the API:
  * <p><ul>
@@ -59,65 +59,20 @@ public class AuthorizationGrant {
   }
 
   /**
-   * A guard that will provide access for X.509 certificates that match a
-   * particular set of fields. If a certificate contains all of the fields
-   * specified in the guard, the guard will produce a positive match.
-   * In other words, the certificate's field must be a superset of the
-   * fields in the guard.
+   * A guard that will provide access for X.509 certificates whose
+   * Subject field matches a particular pattern. If a certificate's
+   * Subject field contains all of the values specified in the guard,
+   * the guard will produce a positive match.
    */
   public static class X509Guard {
-    public Map<String, Object> fields;
+    public String subject;
 
     /**
-     * Specifies the certificate fields that the guard will match against.
-     * @param fields a set of field names and values
-     * @return updated X509Guard object
+     * Specifies a Subject field in RFC2253 Distinguished Name format.
      */
-    public X509Guard setFields(Map<String, Object> fields) {
-      this.fields = fields;
+    public X509Guard setSubject(String subject) {
+      this.subject = subject;
       return this;
-    }
-
-    /**
-     * Adds a single field that the guard will match against.
-     * @param key the field key
-     * @param value the field value
-     * @return updated X509Guard object
-     */
-    public X509Guard addField(String key, Object value) {
-      if (fields == null) {
-        fields = new HashMap<>();
-      }
-
-      fields.put(key, value);
-
-      return this;
-    }
-
-    /**
-     * Adds a single field that the guard will match against,
-     * nested under a "Subject" field.
-     * @param key the field key
-     * @param value the field value
-     * @return updated X509Guard object
-     */
-    public X509Guard addSubjectField(String key, String value) {
-      getSubject().put(key, value);
-      return this;
-    }
-
-    private Map<String, Object> getSubject() {
-      if (fields == null) {
-        fields = new HashMap<>();
-      }
-
-      if (fields.containsKey("subject")) {
-        return (Map<String, Object>) (fields.get("subject"));
-      }
-
-      Map<String, Object> subject = new HashMap<>();
-      fields.put("subject", subject);
-      return subject;
     }
   }
 
@@ -154,7 +109,8 @@ public class AuthorizationGrant {
      */
     public T setGuard(X509Guard g) {
       guardType = "x509";
-      guardData = g.fields;
+      this.guardData = new HashMap<>();
+      guardData.put("subject", g.subject);
       return (T) this;
     }
 

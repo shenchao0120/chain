@@ -90,8 +90,7 @@ public class AuthTest {
     new AuthorizationGrant.Builder()
         .setGuard(
             new AuthorizationGrant.X509Guard()
-                .addSubjectField("CN", "test-cn")
-                .addSubjectField("OU", "test-ou"))
+                .setSubject("CN=test-cn, OU=test-ou"))
         .setPolicy("monitoring")
         .create(client);
 
@@ -101,17 +100,9 @@ public class AuthTest {
       if (!g.guardType.equals("x509")) continue;
       if (!g.policy.equals("monitoring")) continue;
 
-      Object subject = g.guardData.get("subject");
-      if (!(subject instanceof Map)) continue;
-      Map<String, Object> subjectMap = (Map<String, Object>) subject;
-
-      Object cn = subjectMap.get("CN");
-      if (!(cn instanceof String)) continue;
-      if (!((String) cn).equals("test-cn")) continue;
-
-      Object ou = subjectMap.get("OU");
-      if (!(ou instanceof String)) continue;
-      if (!((String) ou).equals("test-ou")) continue;
+      Object id = g.guardData.get("subject");
+      if (!(id instanceof String)) continue;
+      if (!((String) id).equals("CN=test-cn, OU=test-ou")) continue;
 
       found = true;
       break;
