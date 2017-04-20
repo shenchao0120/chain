@@ -296,15 +296,15 @@ func CertAuthnHandler(handler http.Handler) http.Handler {
 }
 
 func CertAuthzHandler(mux *http.ServeMux, handler http.Handler) http.Handler {
-	auth := authz.NewAuthorizer(a.raftDB, grantPrefix, policyByRoute)
-	auth.GrantInternal(a.internalSubj)
+	auth := authz.NewAuthorizer(nil, grantPrefix, policyByRoute) // no raftdb, will only check extra grants
+	auth.GrantInternal(a.internalSubj)                           // unclear how to work around this?
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// return failure early if this path isn't legit
 		if _, pat := mux.Handler(req); pat != req.URL.Path {
 			errorFormatter.Write(req.Context(), rw, errNotFound)
 			return
 		}
-		err := auth.Authorize(req)
+		err := auth.AuthorizeExtraGrants(req)
 		if errors.Root(err) == authz.ErrNotAuthorized {
 			// TODO(kr): remove this workaround once dashboard
 			// knows how to handle ErrNotAuthorized (CH011).
