@@ -284,6 +284,40 @@ func (a *API) authzHandler(mux *http.ServeMux, handler http.Handler) http.Handle
 	})
 }
 
+func CertAuthnHandler(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		ctx := authn.CertAuthn()
+		if len(authn.X509Certs(ctx)) == 0 {
+			errorFormatter.Write(req.Context(), rw, errNotAuthenticated)
+			return
+		}
+		handler.ServeHTTP(rw, req)
+	})
+}
+
+func CertAuthzHandler(mux *http.ServeMux, handler http.Handler) http.Handler {
+	auth := authz.NewAuthorizer(a.raftDB, grantPrefix, policyByRoute)
+	auth.GrantInternal(a.internalSubj)
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// return failure early if this path isn't legit
+		if _, pat := mux.Handler(req); pat != req.URL.Path {
+			errorFormatter.Write(req.Context(), rw, errNotFound)
+			return
+		}
+		err := auth.Authorize(req)
+		if errors.Root(err) == authz.ErrNotAuthorized {
+			// TODO(kr): remove this workaround once dashboard
+			// knows how to handle ErrNotAuthorized (CH011).
+			err = errors.Sub(errNotAuthenticated, err)
+		}
+		if err != nil {
+			errorFormatter.Write(req.Context(), rw, err)
+			return
+		}
+		handler.ServeHTTP(rw, req)
+	})
+}
+
 // timeoutContextHandler propagates the timeout, if any, provided as a header
 // in the http request.
 func timeoutContextHandler(handler http.Handler) http.Handler {
