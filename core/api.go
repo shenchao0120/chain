@@ -3,6 +3,8 @@ package core
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"expvar"
 	"fmt"
@@ -192,9 +194,7 @@ func (a *API) buildHandler() {
 		m.ServeHTTP(w, req)
 	})
 
-	handler := a.authzHandler(m, latencyHandler)
-	handler = a.authnHandler(handler)
-	handler = maxBytes(handler) // TODO(tessr): consider moving this to non-core specific mux
+	handler := maxBytes(latencyHandler) // TODO(tessr): consider moving this to non-core specific mux
 	handler = webAssetsHandler(handler)
 	handler = healthHandler(handler)
 	for _, l := range a.requestLimits {
@@ -249,62 +249,40 @@ type page struct {
 	LastPage bool         `json:"last_page"`
 }
 
-func (a *API) authnHandler(handler http.Handler) http.Handler {
-	auth := authn.NewAPI(a.accessTokens, networkRPCPrefix)
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		req, err := auth.Authenticate(req)
-		if err != nil {
-			errorFormatter.Write(req.Context(), rw, errNotAuthenticated)
-			return
-		}
-		handler.ServeHTTP(rw, req)
-	})
-}
+func AuthHandler(mux *http.ServeMux, handler http.Handler, rDB *raft.Service, accessTokens *accesstoken.CredentialStore, tlsConfig *tls.Config) http.Handler {
+	authenticator := authn.NewAPI(accessTokens, networkRPCPrefix)
+	authorizer := authz.NewAuthorizer(rDB, grantPrefix, policyByRoute)
 
-func (a *API) authzHandler(mux *http.ServeMux, handler http.Handler) http.Handler {
-	auth := authz.NewAuthorizer(a.raftDB, grantPrefix, policyByRoute)
-	auth.GrantInternal(a.internalSubj)
+	var (
+		x509Cert *x509.Certificate
+		err      error
+	)
+	if tlsConfig != nil {
+		// TODO(kr): set Leaf in TLSConfig and use that here. [tktk: do I keep this todo?]
+		x509Cert, err = x509.ParseCertificate(tlsConfig.Certificates[0].Certificate[0])
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// return failure early if this path isn't legit
 		if _, pat := mux.Handler(req); pat != req.URL.Path {
 			errorFormatter.Write(req.Context(), rw, errNotFound)
 			return
 		}
-		err := auth.Authorize(req)
-		if errors.Root(err) == authz.ErrNotAuthorized {
-			// TODO(kr): remove this workaround once dashboard
-			// knows how to handle ErrNotAuthorized (CH011).
-			err = errors.Sub(errNotAuthenticated, err)
-		}
-		if err != nil {
-			errorFormatter.Write(req.Context(), rw, err)
-			return
-		}
-		handler.ServeHTTP(rw, req)
-	})
-}
 
-func CertAuthnHandler(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		ctx := authn.CertAuthn()
-		if len(authn.X509Certs(ctx)) == 0 {
+		req, err := authenticator.Authenticate(req)
+		if err != nil {
 			errorFormatter.Write(req.Context(), rw, errNotAuthenticated)
 			return
 		}
-		handler.ServeHTTP(rw, req)
-	})
-}
 
-func CertAuthzHandler(mux *http.ServeMux, handler http.Handler) http.Handler {
-	auth := authz.NewAuthorizer(nil, grantPrefix, policyByRoute) // no raftdb, will only check extra grants
-	auth.GrantInternal(a.internalSubj)                           // unclear how to work around this?
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// return failure early if this path isn't legit
-		if _, pat := mux.Handler(req); pat != req.URL.Path {
-			errorFormatter.Write(req.Context(), rw, errNotFound)
-			return
+		if x509Cert != nil {
+			authorizer.GrantInternal(x509Cert.Subject)
 		}
-		err := auth.AuthorizeExtraGrants(req)
+
+		err = authorizer.Authorize(req)
 		if errors.Root(err) == authz.ErrNotAuthorized {
 			// TODO(kr): remove this workaround once dashboard
 			// knows how to handle ErrNotAuthorized (CH011).

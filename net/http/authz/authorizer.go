@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -54,6 +55,7 @@ func (a *Authorizer) GrantInternal(subj pkix.Name) {
 func (a *Authorizer) Authorize(req *http.Request) error {
 	policies := a.policyByRoute[strings.TrimRight(req.RequestURI, "/")]
 	if policies == nil || len(policies) == 0 {
+		log.Printf("policies: %+v", a.policyByRoute)
 		return errors.New("missing policy on this route")
 	}
 
@@ -67,27 +69,6 @@ func (a *Authorizer) Authorize(req *http.Request) error {
 	}
 
 	return nil
-}
-
-// authorizes with only extra grants--does not check raft
-func (a *Authorizer) AuthorizeExtraGrants(req *http.Request) error {
-	policies := a.policyByRoute[strings.TrimRight(req.RequestURI, "/")]
-	if policies == nil || len(policies) == 0 {
-		return errors.New("missing policy on this route")
-	}
-
-	var grants []*Grant
-	for _, p := range policies {
-		g, ok := a.extraGrants[p]
-		if !ok {
-			continue
-		}
-		grants = append(grants, g...)
-	}
-
-	if !authorized(req.Context(), grants) {
-		return ErrNotAuthorized
-	}
 }
 
 func authorized(ctx context.Context, grants []*Grant) bool {
