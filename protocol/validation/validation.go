@@ -78,7 +78,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 				return errEmptyResults
 			}
 
-			if !e.ExtHash.IsZero() {
+			if e.ExtHash != nil && !e.ExtHash.IsZero() {
 				return errNonemptyExtHash
 			}
 		}
@@ -97,7 +97,6 @@ func checkValid(vs *validationState, e bc.Entry) error {
 				return errors.Wrapf(err, "checking mux source %d", i)
 			}
 		}
-
 		for i, dest := range e.WitnessDestinations {
 			vs2 := *vs
 			vs2.destPos = uint64(i)
@@ -135,7 +134,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			}
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -159,7 +158,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			return errZeroTime
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -171,7 +170,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			return errors.Wrap(err, "checking output source")
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -183,7 +182,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			return errors.Wrap(err, "checking retirement source")
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -194,7 +193,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 		if e.MaxTimeMs > 0 && e.MaxTimeMs < vs.tx.MaxTimeMs {
 			return errBadTimeRange
 		}
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -251,7 +250,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			return errors.Wrap(err, "checking issuance destination")
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -283,7 +282,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 			return errors.Wrap(err, "checking spend destination")
 		}
 
-		if vs.tx.Version == 1 && !e.ExtHash.IsZero() {
+		if vs.tx.Version == 1 && e.ExtHash != nil && !e.ExtHash.IsZero() {
 			return errNonemptyExtHash
 		}
 
@@ -295,7 +294,7 @@ func checkValid(vs *validationState, e bc.Entry) error {
 }
 
 func checkValidBlockHeader(bh *bc.BlockHeader) error {
-	if bh.Version == 1 && !bh.ExtHash.IsZero() {
+	if bh.Version == 1 && bh.ExtHash != nil && !bh.ExtHash.IsZero() {
 		return errNonemptyExtHash
 	}
 	return nil
