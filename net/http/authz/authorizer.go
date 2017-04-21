@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"chain/crypto/x509/name"
 	"chain/database/raft"
 	"chain/errors"
 	"chain/net/http/authn"
@@ -43,10 +44,14 @@ func NewAuthorizer(rdb *raft.Service, prefix string, policyMap map[string][]stri
 // This grant is not stored in raft and applies only for
 // the current process.
 func (a *Authorizer) GrantInternal(subj pkix.Name) {
+	data, err := name.Format(subj)
+	if err != nil {
+		panic(err)
+	}
 	a.extraGrants["internal"] = append(a.extraGrants["internal"], &Grant{
 		Policy:    "internal",
 		GuardType: "x509",
-		GuardData: encodeX509GuardData(subj),
+		GuardData: []byte(data),
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
 }
@@ -77,9 +82,14 @@ func authorized(ctx context.Context, grants []*Grant) bool {
 				return true
 			}
 		case "x509":
-			certs := authn.X509Certs(ctx)
-			if (len(certs) > 0) && equalX509Name(x509GuardData(g), certs[0].Subject) {
-				return true
+			pattern, err := name.Parse(string(g.GuardData))
+			if err != nil {
+				break
+			}
+			for _, cert := range authn.X509Certs(ctx) {
+				if matchesX509(pattern, cert.Subject) {
+					return true
+				}
 			}
 		case "localhost":
 			if authn.Localhost(ctx) {
@@ -98,30 +108,32 @@ func accessTokenGuardData(grant *Grant) string {
 	return v.ID
 }
 
-func x509GuardData(grant *Grant) pkix.Name {
-	// TODO(boymanjor): We should support the standard X.500 attributes for Subjects.
-	// One idea is to map the json to a pkix.Name.
-	var v struct {
-		Subject struct {
-			CommonName         string   `json:"cn"`
-			OrganizationalUnit []string `json:"ou"`
-		}
-	}
-	json.Unmarshal(grant.GuardData, &v)
-	return pkix.Name{
-		CommonName:         v.Subject.CommonName,
-		OrganizationalUnit: v.Subject.OrganizationalUnit,
-	}
+func matchesX509(pat, x pkix.Name) bool {
+	return matchesString(pat.CommonName, x.CommonName) &&
+		matchesStrings(pat.Country, x.Country) &&
+		matchesStrings(pat.Organization, x.Organization) &&
+		matchesStrings(pat.OrganizationalUnit, x.OrganizationalUnit) &&
+		matchesStrings(pat.Locality, x.Locality) &&
+		matchesStrings(pat.Province, x.Province) &&
+		matchesStrings(pat.StreetAddress, x.StreetAddress) &&
+		matchesStrings(pat.PostalCode, x.PostalCode) &&
+		matchesString(pat.SerialNumber, x.SerialNumber)
 }
 
-func encodeX509GuardData(subj pkix.Name) []byte {
-	d, _ := json.Marshal(map[string]interface{}{
-		"subject": map[string]interface{}{
-			"cn": subj.CommonName,
-			"ou": subj.OrganizationalUnit,
-		},
-	})
-	return d
+func matchesStrings(pat, x []string) bool {
+	if len(x) < len(pat) {
+		return false
+	}
+	for i, s := range pat {
+		if s != x[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func matchesString(pat, x string) bool {
+	return pat == "" || pat == x
 }
 
 func equalX509Name(a, b pkix.Name) bool {
