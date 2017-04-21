@@ -39,6 +39,7 @@ var (
 	errMismatchedValue       = errors.New("mismatched value")
 	errMisorderedBlockHeight = errors.New("misordered block height")
 	errMisorderedBlockTime   = errors.New("misordered block time")
+	errMissingField          = errors.New("missing required field")
 	errNoPrevBlock           = errors.New("no previous block")
 	errNoSource              = errors.New("no source for value")
 	errNonemptyExtHash       = errors.New("non-empty extension hash")
@@ -255,6 +256,9 @@ func checkValid(vs *validationState, e bc.Entry) error {
 		}
 
 	case *bc.Spend:
+		if e.SpentOutputId == nil {
+			return errors.Wrap(errMissingField, "spend without spent output ID")
+		}
 		spentOutput, err := vs.tx.Output(*e.SpentOutputId)
 		if err != nil {
 			return errors.Wrap(err, "getting spend prevout")
@@ -301,6 +305,13 @@ func checkValidBlockHeader(bh *bc.BlockHeader) error {
 }
 
 func checkValidSrc(vstate *validationState, vs *bc.ValueSource) error {
+	if vs.Ref == nil {
+		return errors.Wrap(errMissingField, "missing ref on value source")
+	}
+	if vs.Value == nil || vs.Value.AssetId == nil {
+		return errors.Wrap(errMissingField, "missing value on value source")
+	}
+
 	e, ok := vstate.tx.Entries[*vs.Ref]
 	if !ok {
 		return errors.Wrapf(bc.ErrMissingEntry, "entry for value source %x not found", vs.Ref.Bytes())
@@ -336,7 +347,7 @@ func checkValidSrc(vstate *validationState, vs *bc.ValueSource) error {
 		return errors.Wrapf(bc.ErrEntryType, "value source is %T, should be issuance, spend, or mux", e)
 	}
 
-	if *dest.Ref != vstate.entryID {
+	if dest.Ref == nil || *dest.Ref != vstate.entryID {
 		return errors.Wrapf(errMismatchedReference, "value source for %x has disagreeing destination %x", vstate.entryID.Bytes(), dest.Ref.Bytes())
 	}
 
@@ -352,6 +363,13 @@ func checkValidSrc(vstate *validationState, vs *bc.ValueSource) error {
 }
 
 func checkValidDest(vs *validationState, vd *bc.ValueDestination) error {
+	if vd.Ref == nil {
+		return errors.Wrap(errMissingField, "missing ref on value destination")
+	}
+	if vd.Value == nil || vd.Value.AssetId == nil {
+		return errors.Wrap(errMissingField, "missing value on value source")
+	}
+
 	e, ok := vs.tx.Entries[*vd.Ref]
 	if !ok {
 		return errors.Wrapf(bc.ErrMissingEntry, "entry for value destination %x not found", vd.Ref.Bytes())
@@ -380,7 +398,7 @@ func checkValidDest(vs *validationState, vd *bc.ValueDestination) error {
 		return errors.Wrapf(bc.ErrEntryType, "value destination is %T, should be output, retirement, or mux", e)
 	}
 
-	if *src.Ref != vs.entryID {
+	if src.Ref == nil || *src.Ref != vs.entryID {
 		return errors.Wrapf(errMismatchedReference, "value destination for %x has disagreeing source %x", vs.entryID.Bytes(), src.Ref.Bytes())
 	}
 
