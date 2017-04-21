@@ -39,7 +39,7 @@ var (
 
 func (tx *Tx) TimeRange(id Hash) (*TimeRange, error) {
 	e, ok := tx.Entries[id]
-	if !ok {
+	if !ok || e == nil {
 		return nil, errors.Wrapf(ErrMissingEntry, "id %x", id.Bytes())
 	}
 	tr, ok := e.(*TimeRange)
@@ -51,7 +51,7 @@ func (tx *Tx) TimeRange(id Hash) (*TimeRange, error) {
 
 func (tx *Tx) Output(id Hash) (*Output, error) {
 	e, ok := tx.Entries[id]
-	if !ok {
+	if !ok || e == nil {
 		return nil, errors.Wrapf(ErrMissingEntry, "id %x", id.Bytes())
 	}
 	o, ok := e.(*Output)
@@ -63,7 +63,7 @@ func (tx *Tx) Output(id Hash) (*Output, error) {
 
 func (tx *Tx) Spend(id Hash) (*Spend, error) {
 	e, ok := tx.Entries[id]
-	if !ok {
+	if !ok || e == nil {
 		return nil, errors.Wrapf(ErrMissingEntry, "id %x", id.Bytes())
 	}
 	sp, ok := e.(*Spend)
@@ -75,7 +75,7 @@ func (tx *Tx) Spend(id Hash) (*Spend, error) {
 
 func (tx *Tx) Issuance(id Hash) (*Issuance, error) {
 	e, ok := tx.Entries[id]
-	if !ok {
+	if !ok || e == nil {
 		return nil, errors.Wrapf(ErrMissingEntry, "id %x", id.Bytes())
 	}
 	iss, ok := e.(*Issuance)
